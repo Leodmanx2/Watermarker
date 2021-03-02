@@ -2,6 +2,7 @@
 
 #include <winrt/base.h>
 #include <filesystem>
+#include <argagg/argagg.hpp>
 
 class Application
 {
@@ -14,8 +15,12 @@ class Application
 	winrt::com_ptr<IWICImagingFactory2> wic_factory;
 	winrt::com_ptr<ID2D1Bitmap> d2d_mark_bitmap;
 
-	int argc;
-	char** argv;
+	argagg::parser_results m_args;
+	argagg::parser         m_parser;
+
+	std::filesystem::path m_savedir;
+
+	void init();
 
 public:
 	Application(int argc, char** argv);

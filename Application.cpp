@@ -4,8 +4,25 @@
 using winrt::com_ptr;
 using winrt::check_hresult;
 
-Application::Application(int argc, char** argv) : argc(argc), argv(argv)
+Application::Application(int argc, char** argv)
+: m_parser { { {
+	{"help", { "-h", "--help" }, "produce help message", 0},
+	{ "savedir", {"-s", "--savedir"}, "output directory (default: current directory)", 1 },
+	{ "markfile", {"-m", "--markfile"}, "watermark image file (default: mark.png)", 1 },
+	} }}
 {
+	m_args = m_parser.parse(argc, argv);
+}
+
+void Application::init() {
+	m_savedir = std::filesystem::current_path();
+	if (m_args["savedir"]) {
+		m_savedir = m_args["savedir"].as<std::string>();
+	}
+	if (m_savedir.generic_string().back() != '/') {
+		m_savedir += '/';
+	}
+
 	D3D_FEATURE_LEVEL featureLevels[] = {
 		D3D_FEATURE_LEVEL_12_0,
 		D3D_FEATURE_LEVEL_12_1,
@@ -48,8 +65,17 @@ Application::Application(int argc, char** argv) : argc(argc), argv(argv)
 		__uuidof(IWICImagingFactory2),
 		wic_factory.put_void()));
 
+	LPCWSTR markfile = L"mark.png";
+	if (m_args["markfile"]) {
+		std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+		std::wstring wide_markfile = converter.from_bytes(m_args["markfile"].as<std::string>());
+		markfile = wide_markfile.c_str();
+	}
+	if (!std::filesystem::is_regular_file(markfile)) {
+		throw std::runtime_error("cannot find watermark image file");
+	}
 	com_ptr<IWICBitmapDecoder> wic_mark_decoder;
-	check_hresult(wic_factory->CreateDecoderFromFilename(L"mark.png",
+	check_hresult(wic_factory->CreateDecoderFromFilename(markfile,
 		nullptr,
 		GENERIC_READ,
 		WICDecodeMetadataCacheOnDemand,
@@ -72,12 +98,25 @@ Application::Application(int argc, char** argv) : argc(argc), argv(argv)
 
 void Application::run()
 {
-	for (int i = 1; i < argc; ++i) {
-		if (std::filesystem::is_regular_file(argv[i])) {
-			process_file(argv[i]);
+	if (m_args["help"]) {
+		argagg::fmt_ostream fmt(std::cout);
+		fmt << m_parser;
+		return;
+	}
+
+	if (m_args.pos.size() == 0) {
+		std::cout << "nothing to do\n";
+		return;
+	}
+
+	init();
+
+	for (const char* arg : m_args.pos) {
+		if (std::filesystem::is_regular_file(arg)) {
+			process_file(arg);
 		}
 		else {
-			std::clog << "skipping " << argv[i] << " -- not a file\n";
+			std::clog << "skipping " << arg << " -- not a file\n";
 		}
 	}
 }
@@ -165,7 +204,7 @@ void Application::process_file(const std::filesystem::path& path) const
 	com_ptr<IWICBitmapEncoder> wic_bitmap_encoder;
 	check_hresult(wic_factory->CreateEncoder(GUID_ContainerFormatJpeg, nullptr, wic_bitmap_encoder.put()));
 
-	std::filesystem::path newpath(path);
+	std::filesystem::path newpath(m_savedir);
 	newpath.replace_filename(path.stem() += "[watermarked].jpg");
 	const std::wstring dst_path = newpath.wstring();
 	com_ptr<IWICStream> wic_encode_stream;
