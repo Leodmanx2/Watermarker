@@ -12,13 +12,13 @@ proc main {} {
 	grid rowconfigure . 0 -weight 1
 
 	# File Operations
-	tk::button .c.add_button -text "Add Files" -command add_files
+	ttk::button .c.add_button -text "Add Files" -command add_files
 	grid .c.add_button -column 0 -row 0 -pady 10
 
-	tk::button .c.remove_button -text "Remove Selected" -command remove_files
+	ttk::button .c.remove_button -text "Remove Selected" -command remove_files
 	grid .c.remove_button -column 1 -row 0 -pady 10
 
-	tk::button .c.clear_button -text "Clear List" -command ".c.listbox delete 0 end"
+	ttk::button .c.clear_button -text "Clear List" -command ".c.listbox delete 0 end"
 	grid .c.clear_button -column 2 -row 0 -pady 10
 
 	# File List
@@ -58,7 +58,7 @@ proc main {} {
 	grid .c.markfile_button -column 2 -row 6
 
 	# Start Button
-	tk::button .c.start_button -text "Start" -command start
+	ttk::button .c.start_button -text "Start" -command start
 	grid .c.start_button -column 1 -row 7 -pady 10
 }
 
